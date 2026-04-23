@@ -125,13 +125,12 @@ def run_pipeline(circuit: QuantumCircuit, backend, shots: int = 16384) -> dict:
     """
     n_qubits = circuit.num_qubits
 
-    # 1. Ideal probabilities via StatevectorSimulator on the logical circuit
+    from qiskit.quantum_info import Statevector
+
+    # 1. Ideal probabilities via Statevector on the logical circuit
     #    Must remove measurements first
     circ_no_meas = circuit.remove_final_measurements(inplace=False) if hasattr(circuit, 'remove_final_measurements') else circuit.copy()
-    sv_sim = StatevectorSimulator()
-    sv_job = sv_sim.run(circ_no_meas)
-    sv_result = sv_job.result()
-    statevec = sv_result.get_statevector(circ_no_meas)
+    statevec = Statevector(circ_no_meas)
     probs_ideal = np.abs(np.array(statevec.data)) ** 2
 
     # 2. Add measurements to the logical circuit
