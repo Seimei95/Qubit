@@ -125,37 +125,39 @@ def run_pipeline(circuit: QuantumCircuit, backend, shots: int = 16384) -> dict:
     """
     n_qubits = circuit.num_qubits
 
-    # 1. Transpile to backend native gate set
-    transpiled = transpile(circuit, backend=backend, optimization_level=1, seed_transpiler=42)
-
-    # 2. Circuit features (post-transpilation)
-    circ_feats = extract_circuit_features(transpiled)
-
-    # 3. Noise features
-    noise_feats = extract_noise_features(backend)
-
-    # 4. Ideal probabilities via StatevectorSimulator
+    # 1. Ideal probabilities via StatevectorSimulator on the logical circuit
     #    Must remove measurements first
-    circ_no_meas = transpiled.remove_final_measurements(inplace=False)
+    circ_no_meas = circuit.remove_final_measurements(inplace=False) if hasattr(circuit, 'remove_final_measurements') else circuit.copy()
     sv_sim = StatevectorSimulator()
     sv_job = sv_sim.run(circ_no_meas)
     sv_result = sv_job.result()
     statevec = sv_result.get_statevector(circ_no_meas)
     probs_ideal = np.abs(np.array(statevec.data)) ** 2
 
-    # 5. Noisy probabilities via AerSimulator + noise model
+    # 2. Add measurements to the logical circuit
+    circ_with_meas = circuit.copy()
+    circ_with_meas.measure_all()
+
+    # 3. Transpile the measured circuit to backend native gate set
+    transpiled = transpile(circ_with_meas, backend=backend, optimization_level=1, seed_transpiler=42)
+
+    # 4. Circuit features (post-transpilation)
+    circ_feats = extract_circuit_features(transpiled)
+
+    # 5. Noise features
+    noise_feats = extract_noise_features(backend)
+
+    # 6. Noisy probabilities via AerSimulator + noise model
     noise_model = NoiseModel.from_backend(backend)
     noisy_sim = AerSimulator(noise_model=noise_model)
     if 'GPU' in noisy_sim.available_devices():
         noisy_sim.set_options(device='GPU')
         
-    circ_with_meas = transpiled.copy()
-    circ_with_meas.measure_all()
-    noisy_job = noisy_sim.run(circ_with_meas, shots=shots, seed_simulator=42)
+    noisy_job = noisy_sim.run(transpiled, shots=shots, seed_simulator=42)
     counts_noisy = noisy_job.result().get_counts()
 
-    # 6. Hellinger fidelity
-    fidelity = hellinger_fidelity(probs_ideal, counts_noisy, transpiled.num_qubits)
+    # 7. Hellinger fidelity (using logical n_qubits)
+    fidelity = hellinger_fidelity(probs_ideal, counts_noisy, n_qubits)
 
     return {**circ_feats, **noise_feats, "fidelity": fidelity, "backend": backend.name}
 
