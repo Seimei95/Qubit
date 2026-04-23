@@ -211,7 +211,7 @@ def run_pipeline(
     counts_noisy = noisy_result.get_counts()
 
     # 6. Fidelity
-    fidelity = hellinger_fidelity(probs_ideal, counts_noisy, n_qubits)
+    fidelity = hellinger_fidelity(probs_ideal, counts_noisy, transpiled.num_qubits)
 
     return {
         "sample_id":   f"{circuit_id}__{backend_name}",

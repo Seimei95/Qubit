@@ -155,7 +155,7 @@ def run_pipeline(circuit: QuantumCircuit, backend, shots: int = 16384) -> dict:
     counts_noisy = noisy_job.result().get_counts()
 
     # 6. Hellinger fidelity
-    fidelity = hellinger_fidelity(probs_ideal, counts_noisy, n_qubits)
+    fidelity = hellinger_fidelity(probs_ideal, counts_noisy, transpiled.num_qubits)
 
     return {**circ_feats, **noise_feats, "fidelity": fidelity, "backend": backend.name}
 
