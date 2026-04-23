@@ -76,10 +76,14 @@ def extract_circuit_features(circuit: QuantumCircuit) -> dict:
 def extract_noise_features(backend) -> dict:
     # T1, T2 from qubit_properties
     t1_vals, t2_vals = [], []
-    for qp in backend.qubit_properties:
-        if qp is not None:
-            if qp.t1 is not None: t1_vals.append(qp.t1)
-            if qp.t2 is not None: t2_vals.append(qp.t2)
+    for q in range(backend.num_qubits):
+        try:
+            qp = backend.qubit_properties(q)
+            if qp is not None:
+                if getattr(qp, "t1", None) is not None: t1_vals.append(qp.t1)
+                if getattr(qp, "t2", None) is not None: t2_vals.append(qp.t2)
+        except Exception:
+            pass
 
     # Single-qubit gate errors
     sq_errors = []
@@ -142,6 +146,9 @@ def run_pipeline(circuit: QuantumCircuit, backend, shots: int = 16384) -> dict:
     # 5. Noisy probabilities via AerSimulator + noise model
     noise_model = NoiseModel.from_backend(backend)
     noisy_sim = AerSimulator(noise_model=noise_model)
+    if 'GPU' in noisy_sim.available_devices():
+        noisy_sim.set_options(device='GPU')
+        
     circ_with_meas = transpiled.copy()
     circ_with_meas.measure_all()
     noisy_job = noisy_sim.run(circ_with_meas, shots=shots, seed_simulator=42)

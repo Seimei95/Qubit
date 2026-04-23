@@ -149,6 +149,7 @@ def make_xgb():
         n_estimators=400, learning_rate=0.05, max_depth=5,
         subsample=0.8, colsample_bytree=0.8,
         random_state=RANDOM_STATE, n_jobs=-1, verbosity=0,
+        tree_method="hist", device="cuda"
     )
 
 MODEL_FACTORIES = {
